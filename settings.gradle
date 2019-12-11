@@ -1,0 +1,4 @@
+rootProject.name = 'kmeans-kotlin-mp'
+
+
+enableFeaturePreview('GRADLE_METADATA')
