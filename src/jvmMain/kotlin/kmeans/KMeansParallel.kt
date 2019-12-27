@@ -1,10 +1,14 @@
 package kmeans
 
 import kotlinx.coroutines.*
+import math.DefaultVectorMath
+import math.Vector
+import math.VectorMath
 import java.util.concurrent.Executors
 import kotlin.random.Random
 
-actual class KMeansParallel actual constructor(data: Data, random: Random, val threadNum: Int): KMeans(data, random) {
+actual class KMeansParallel actual constructor(data: Data, vectorMath: VectorMath, random: Random, val threadNum: Int):
+            KMeans(data, vectorMath, random) {
 
     lateinit var dispatcher: ExecutorCoroutineDispatcher
 
@@ -22,7 +26,7 @@ actual class KMeansParallel actual constructor(data: Data, random: Random, val t
         return runBlocking (dispatcher) {
             chunks.map { chunk ->
                  async {
-                     chunk.map { point -> Pair(closestCentroid(point, centroids), point) }
+                     chunk.map { point -> Pair(closestCentroid(vectorMath, point, centroids), point) }
                  }
             }.map {it.await()}
              .flatten()
@@ -35,20 +39,20 @@ actual class KMeansParallel actual constructor(data: Data, random: Random, val t
         val sum = runBlocking (dispatcher) {
             chunks.map { chunk ->
                 async {
-                    chunk.reduce{ v1, v2 -> Vectors.add(v1, v2) }
+                    chunk.reduce{ v1, v2 -> vectorMath.add(v1, v2) }
                 }
             }.map {it.await()}
-                .reduce{v1, v2 -> Vectors.add(v1, v2) }
+                .reduce{v1, v2 -> vectorMath.add(v1, v2) }
         }
 
-        return Vectors.divideBy(sum, points.size)
+        return vectorMath.divideBy(sum, points.size)
     }
 
     override fun spawnCenters(clusterNum: Int, data: Data): List<Vector> {
         return runBlocking (dispatcher) {
             (0 until clusterNum).map {
                 async {
-                    data.randWithin(random)
+                    randomInBounds()
                 }
             }.map{it.await()}
             .toList()

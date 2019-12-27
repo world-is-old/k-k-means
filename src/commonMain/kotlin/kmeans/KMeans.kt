@@ -1,8 +1,19 @@
 package kmeans
 
+import math.Vector
+import math.VectorMath
 import kotlin.random.Random
 
-open class KMeans(val data: Data, val random: Random) {
+open class KMeans(val data: Data, val vectorMath: VectorMath, val random: Random) {
+
+    val minBound: Vector
+    val maxBound: Vector
+
+    init {
+        val (min, max) = vectorMath.minMaxBound(data.points, data.vectorSize)
+        minBound = min
+        maxBound = max
+    }
 
     open fun run(clusterNum: Int, maxIterations: Int): AlgorithmResult {
         val timer = Timer()
@@ -23,9 +34,9 @@ open class KMeans(val data: Data, val random: Random) {
             timer.reset()
             for (centroid in centroids) {
                 val points = clusters[centroid]
-                val updatedCentroid = if (points == null) data.randWithin(random) else calculateCenter(points)
+                val updatedCentroid = if (points == null) randomInBounds() else calculateCenter(points)
                 updatedCentroids.add(updatedCentroid)
-                converged = converged and (Vectors.distance(centroid, updatedCentroid) < 1)
+                converged = converged and (vectorMath.distance(centroid, updatedCentroid) < 1)
             }
             println("center update in ${timer.elapsedSec()}")
             centroids = updatedCentroids
@@ -36,20 +47,27 @@ open class KMeans(val data: Data, val random: Random) {
     }
 
     open fun clusterPoints(centroids: Collection<Vector>, data: Data): Map<Vector, List<Vector>> {
-        return data.points.map{ point -> Pair(closestCentroid(point, centroids), point) }.groupBy({ it.component1() }, { it.component2() })
+        return data.points.map{ point -> Pair(closestCentroid(vectorMath, point, centroids), point) }
+                          .groupBy({ it.component1() }, { it.component2() })
     }
 
     open fun calculateCenter(points: List<Vector>): Vector {
-        return Vectors.divideBy(points.reduce { v1, v2 -> Vectors.add(v1, v2) }, points.size)
+        return vectorMath.divideBy(points.reduce { v1, v2 -> vectorMath.add(v1, v2) }, points.size)
     }
 
     open fun spawnCenters(clusterNum: Int, data: Data): List<Vector> {
-        return (0 until clusterNum).map {data.randWithin(random)}.toList()
+        return (0 until clusterNum).map {randomInBounds()}.toList()
+    }
+
+    fun randomInBounds(): Vector {
+        return vectorMath.rand(random, minBound, maxBound)
     }
 }
 
-fun closestCentroid(point: Vector, centroids:Collection<Vector>): Vector {
-    return centroids.minBy { Vectors.distMeasure(it, point) }
+//moving function outside class because it is considered as a captured value when passed inside the context
+// (problematic in Native impl)
+fun closestCentroid(vectorMath: VectorMath, point: Vector, centroids:Collection<Vector>): Vector {
+    return centroids.minBy { vectorMath.distMeasure(it, point) }
         ?: throw IllegalStateException("No centroids")
 }
 

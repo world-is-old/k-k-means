@@ -4,11 +4,13 @@ import kotlinx.cinterop.ByteVar
 import kotlinx.cinterop.allocArray
 import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.toKString
+import math.Vector
+import math.VectorMath
 import platform.posix.*
 
 actual class Loader {
 
-    actual fun readData(fileName: String, vectorSize: Int, limit: Int): Data {
+    actual fun readData(fileName: String, vectorSize: Int, limit: Int, vectorMath: VectorMath): Data {
         val file = fopen(fileName, "r")
         if (file == null) {
             perror("cannot open input file $fileName")
@@ -35,7 +37,7 @@ actual class Loader {
                     }
 
                     val tokens = nextLine.split('\t').subList(0, vectorSize)
-                    val vector = Vector(vectorSize, tokens.map { it.toDouble()}.toDoubleArray())
+                    val vector = vectorMath.fromDoubles(tokens.map { it.toDouble() }.toDoubleArray())
                     records.add(vector)
                 } while (true)
             }

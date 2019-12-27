@@ -1,3 +1,5 @@
+import math.DefaultVectorMath
+
 fun main() {
-    Runner().run("JVM")
+    Runner().run("JVM", DefaultVectorMath())
 }

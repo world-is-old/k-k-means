@@ -1,9 +1,12 @@
 package kmeans
 
+import math.Vector
+import math.VectorMath
 import kotlin.native.concurrent.*
 import kotlin.random.Random
 
-actual class KMeansParallel actual constructor(data: Data, random: Random, val threadNum: Int): KMeans(data, random) {
+actual class KMeansParallel actual constructor(data: Data, vectorMath: VectorMath, random: Random, val threadNum: Int):
+    KMeans(data, vectorMath, random) {
 
     private lateinit var workers: Array<Worker>
 
@@ -25,7 +28,7 @@ actual class KMeansParallel actual constructor(data: Data, random: Random, val t
         val futures = Array(workers.size) { workerIndex ->
             workers[workerIndex].execute(TransferMode.SAFE, { //split centroid calculation for parallel processing
                 Pair(centroids, chunks[workerIndex])
-            }) { data -> data.component2().map {Pair(it, closestCentroid(it, data.component1())) }} //assign closes centroids
+            }) { data -> data.component2().map {Pair(it, closestCentroid(vectorMath, it, data.component1())) }} //assign closes centroids
         }
         val futureSet = futures.toSet()
         val pairs = mutableListOf<List<Pair<Vector, Vector>>>()
@@ -44,7 +47,7 @@ actual class KMeansParallel actual constructor(data: Data, random: Random, val t
         val futures = Array(workers.size) { workerIndex ->
             workers[workerIndex].execute(TransferMode.SAFE, {
                 chunks[workerIndex]
-            }) {it.reduce{ v1, v2 -> Vectors.add(v1, v2) }}  //sum vector values in parallel
+            }) {it.reduce{ v1, v2 -> vectorMath.add(v1, v2) }}  //sum vector values in parallel
         }
         val futureSet = futures.toSet()
         val sum = mutableListOf<Vector>()
@@ -53,7 +56,7 @@ actual class KMeansParallel actual constructor(data: Data, random: Random, val t
             sum.addAll(ready.map{it.consume {result -> result}}.toList())  //sum intermediate sums
         }
 
-        return Vectors.divideBy(sum.reduce { v1, v2 -> Vectors.add(v1, v2) }, points.size) //find average
+        return vectorMath.divideBy(sum.reduce { v1, v2 -> vectorMath.add(v1, v2) }, points.size) //find average
     }
 
     private fun chunk(points: List<Vector>):List<List<Vector>> {
